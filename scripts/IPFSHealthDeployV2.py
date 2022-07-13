@@ -14,7 +14,7 @@ import Crypto.Random
 
 new = 2
 # chain :  0x044926296CE4841faE2601082eD7B56EC8C2c874
-chain = IPFSHealthRecordV2.at("0xe7c958822a9f58e9C35b2B0a5cB1027FF14C921b")
+chain = IPFSHealthRecordV2.at("0x854D67F4375Fc9eD089366Fa70cbd6cA0D465843")
 
 import ipfshttpclient
 client = ipfshttpclient.connect('/ip4/127.0.0.1/tcp/5001')  # Connects to: /dns/localhost/tcp/5001/http
@@ -54,6 +54,43 @@ def showTable(rows, height):
         else:
             continue
     window.close()
+
+permission=["Sender","Receiver","Status"]
+def showPerm(rows, height):
+    table_layout = [
+        [
+            sg.Table(
+                values=rows,
+                headings=permission,
+                # def_col_width=8,
+                # auto_size_columns=False,
+                expand_x=True,
+                display_row_numbers=False,
+                justification="right",
+                num_rows=height,
+                row_height=35,
+                key='click2',
+                enable_events=True
+            )
+        ]
+    ]
+
+    window = sg.Window("Permissions", table_layout, modal=True, size=(500, 350))
+    while True:
+        event, values = window.read()
+        if event == "Exit" or event == sg.WIN_CLOSED:
+            break
+        elif event == "click2":
+            data_selected = [rows[row] for row in values[event]]
+            print(data_selected)  # an array like this [[6, 'Fischl', 4.0]]
+            flip=chain.FlipFlagDataShare(data_selected[0][0],data_selected[0][1],{"from":account})
+            break
+        else:
+            continue
+    window.close()
+
+
+
 
 def selfdata(uname):
     pid = chain.getPid(uname)
@@ -120,8 +157,10 @@ def open_register(flag):
 
 
 def open_login(uname, pword, flag):
+    UserType = {1: "Doctor", 2: "Patient"}
     check = chain.Login(uname, pword)
-    if check == "Fail":
+    print(check)
+    if check == "Fail" or UserType[flag]!=check:
         sg.popup("Invalid Login")
     else:
         if flag == 1:
@@ -143,7 +182,7 @@ def open_login(uname, pword, flag):
         if flag == 2:
             layout = [
                 [sg.Text("Enter your choice:")],
-                [sg.Button("ViewData"), sg.Button("SendData"),sg.Button("ViewShare")],
+                [sg.Button("ViewData"), sg.Button("SendData"),sg.Button("ViewShare"),sg.Button("SetPerm")],
             ]
             window = sg.Window("Patient View", layout, modal=True)
             choice = None
@@ -156,50 +195,57 @@ def open_login(uname, pword, flag):
                 if event == "SendData":
                     Spid=chain.getPid(uname)                    
                     Rpid = sg.popup_get_text("Enter Receiver pid:")
-                    object2=chain.SearchRecord(Spid, {"from": account})
-                    object = chain.RetFilter()
-                    object = list(chain.RetFilter())
-                    res=[]
-                    for i in object:
-                        print(i)
-                        d=client.get_json(i[0])
-                        print(d,type(d))
-                        res.append([d['DID'],d['PID'],d['Object'],d['Date'],d['Dept'],d['Prescription'],d['File']])
-                    hash=client.add_json(res)
                     Rpub=chain.getPubKey(Rpid)
-                    public_key = RSA.importKey(binascii.unhexlify(Rpub))
-                    public_key=public_key.export_key('PEM')
-                    rsa_public_key = RSA.importKey(public_key)
-                    rsa_public_key = PKCS1_OAEP.new(rsa_public_key)
-                    message = str.encode(hash)
-                    encrypted_text = rsa_public_key.encrypt(message)
-                    chain.SetDataShare(Spid,Rpid,encrypted_text,{"from": account})
+                    if Rpub=="Not Found":
+                        sg.popup("Invalid PID")
+                    else:
+                        object2=chain.SearchRecord(Spid, {"from": account})
+                        object = chain.RetFilter()
+                        object = list(chain.RetFilter())
+                        res=[]
+                        for i in object:
+                            print(i)
+                            d=client.get_json(i[0])
+                            print(d,type(d))
+                            res.append([d['DID'],d['PID'],d['Object'],d['Date'],d['Dept'],d['Prescription'],d['File']])
+                        if res == []:
+                            sg.popup("No Records")
+                        else:
+                            hash=client.add_json(res)
+                            public_key = RSA.importKey(binascii.unhexlify(Rpub))
+                            public_key=public_key.export_key('PEM')
+                            rsa_public_key = RSA.importKey(public_key)
+                            rsa_public_key = PKCS1_OAEP.new(rsa_public_key)
+                            message = str.encode(hash)
+                            encrypted_text = rsa_public_key.encrypt(message)
+                            chain.SetDataShare(Spid,Rpid,encrypted_text,{"from": account})
                 if event == "ViewShare":
                     Rpid=chain.getPid(uname)                    
                     Spid = sg.popup_get_text("Enter Sender pid:")
-                    encrypted_data=chain.GetDataShare.call(Spid,Rpid,{"from": account})
-                    #encrypted_data=encrypted_data.call
-                    print(encrypted_data)
                     Rpriv=chain.getPrivKey(Rpid)
+                    encrypted_data=chain.GetDataShare.call(Spid,Rpid,{"from": account})
                     private_key=RSA.importKey(binascii.unhexlify(Rpriv))
                     private_key=private_key.export_key('PEM')
                     rsa_private_key = RSA.importKey(private_key)
                     cipher = PKCS1_OAEP.new(rsa_private_key)
                     json=cipher.decrypt(encrypted_data)
                     json=json.decode('utf-8')
-                    print(json)
                     data=client.get_json(json)
-                    print(data,type(data))
                     showTable(data, 10)
+                if event == "SetPerm":
+                    Spid=chain.getPid(uname)  
+                    object=chain.ShowDS.call(Spid,{"from":account})
+                    res=[]
+                    for i in object:
+                        res.append(i[:-1])
+                    object=res
+                    print(object)
+                    if object == []:
+                        sg.popup("Nothing Shared")
+                    else:
+                        showPerm(object, 10)                      
             window.close()
             
-
-print("UserList:",end="")
-print(chain.RetUser())
-print("patientList:",end="")
-print(chain.GetPDetails())
-print("DoctorList:",end="")
-print(chain.GetDDetails())
 
 
 def add(uname):
@@ -218,14 +264,6 @@ def add(uname):
     print(res)
     chain.AddRecord(res,pid,{"from": account})
 
-
-def show():
-    details = chain.GetAllRecords()
-    # sg.popup(details)
-    showTable(details, 10)
-    print(details)
-
-
 def search():
     pid = sg.popup_get_text("Enter search pid")
     object2=chain.SearchRecord(pid, {"from": account})
@@ -241,20 +279,6 @@ def search():
         sg.popup("Not Found")
     else:
         showTable(res, 10)
-
-def searchdept(uname):
-    l = chain.getDid(uname)
-    dept=l[1]
-    chain.SearchRecorddept(dept, {"from": account})
-    object = chain.RetFilter()
-    object = list(chain.RetFilter())
-    res = [i for i in object if i != ("", "", "", "", "", "", 0)]
-    object = res
-    print(object)
-    if object == []:
-        sg.popup("Not Found")
-    else:
-        showTable(object, 10)
 
 
 def deploy_health():

@@ -32,11 +32,13 @@ contract IPFSHealthRecordV2 {
                 (User.password ==
                     keccak256(abi.encodePacked(pass)))
             ) {
-                return "Success";
+                return User.usertype;
             }
         }
         return "Fail";
     }
+
+
 
     function Register(
         string memory uname,
@@ -271,9 +273,10 @@ contract IPFSHealthRecordV2 {
                 keccak256(abi.encodePacked((SharedData[i].ReceiverPID))) ==
                 keccak256(abi.encodePacked(ReceiverPid))  
             )
-            ) {								//if present
-                SharedData[i].data=encdata;			//add index to pid in hashtable
-                flag = 1;							//set the flag
+            ) {								
+                SharedData[i].data=encdata;		
+                SharedData[i].flag=1;	
+                flag = 1;							
                 break;
             }    
 
@@ -283,7 +286,7 @@ contract IPFSHealthRecordV2 {
         }
 
     }
-    function UnSetFlagDataShare(
+    function FlipFlagDataShare(
 
         string memory SenderPid,
         string memory ReceiverPid
@@ -301,8 +304,11 @@ contract IPFSHealthRecordV2 {
                 keccak256(abi.encodePacked((SharedData[i].ReceiverPID))) ==
                 keccak256(abi.encodePacked(ReceiverPid))  
             )
-            ) {								//if present
-                SharedData[i].flag=0;			//add index to pid in hashtable
+            ) {	
+                if(SharedData[i].flag==0)							//if present
+                SharedData[i].flag=1;
+                else
+                SharedData[i].flag=0;
                 return("Success");
             }    
 
@@ -315,7 +321,7 @@ contract IPFSHealthRecordV2 {
         string memory SenderPid,
         string memory ReceiverPid
         
-    ) public returns(bytes memory){
+    ) public view returns(bytes memory){
         uint256 i;
         uint256 flag=0;
         for (i = 0; i < SharedData.length; i++) {				//iterate through hashtable
@@ -340,5 +346,26 @@ contract IPFSHealthRecordV2 {
         }
 
     }
+
+
+    datasharing[] public FilteredDS;
+    datasharing[] public EmptyDS;
+
+    function ShowDS(string memory pid)
+        public
+        returns (datasharing[] memory)
+    {
+        FilteredDS = EmptyDS;						//clear  FilteredData
+        uint256 i;
+        for (i = 0; i < SharedData.length; i++) {				//iterate through Hashtable
+            if ( keccak256(abi.encodePacked((SharedData[i].SenderPID))) ==
+                keccak256(abi.encodePacked(pid))  		//if pid matches
+            )
+                 FilteredDS.push(SharedData[i]);	
+                }					//push record present in the index to FilteredData
+        return FilteredDS;
+    }
+
+
 
 }

@@ -4,6 +4,9 @@ from brownie import accounts, config, IPFSHealthRecordV2, network
 
 #0xd3E04fb6002065440eae96c1D02938e5BCB0fD76
 
+#V2:0xe7c958822a9f58e9C35b2B0a5cB1027FF14C921b
+
+#V2new:0x854D67F4375Fc9eD089366Fa70cbd6cA0D465843
 def test1():
     account = get_account()
     test = IPFSHealthRecordV2.deploy({"from": account})
