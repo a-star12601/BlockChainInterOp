@@ -47,7 +47,7 @@ contract IPFSHealthRecordV2 {
         string memory name,
         string memory id,
         string memory var1,
-        string memory dob,
+        string memory SSN,
         string memory privkey,
         string memory pubkey,
         uint256 flag
@@ -65,10 +65,10 @@ contract IPFSHealthRecordV2 {
         
         UserList.push(users(uname,keccak256(abi.encodePacked((pass))) , utype));
         if (flag == 1) {
-            DDetails.push(doctor(uname, name, id, var1, dob,privkey,pubkey));
+            DDetails.push(doctor(uname, name, id, var1, SSN,privkey,pubkey));
             return "Success";
         } else {
-            PDetails.push(patient(uname, name, id, var1, dob,privkey,pubkey));
+            PDetails.push(patient(uname, name, id, var1, SSN,privkey,pubkey));
             return "Success";
         }
     }
@@ -79,7 +79,7 @@ contract IPFSHealthRecordV2 {
         string name;
         string DID;
         string dept;
-        string dob;
+        string SSN;
         string privkey;
         string pubkey;
     }
@@ -90,7 +90,7 @@ contract IPFSHealthRecordV2 {
         string name;
         string PID;
         string addr;
-        string dob;
+        string SSN;
         string privkey;
         string pubkey;
     }
@@ -142,6 +142,7 @@ contract IPFSHealthRecordV2 {
     
     struct hashtable {			//structure containing pid and corresponding indexes
         string pid;
+        string SSN;
         uint256[] indexes;
     }
     hashtable[] public HashList;		//array of structures
@@ -152,13 +153,30 @@ contract IPFSHealthRecordV2 {
         string PID;
     }
     phealthrec[] public Records;
-
+    
+    function getSSN(string memory pid)
+        public
+        view returns (string memory)
+    {
+        uint256 i;
+        for (i = 0; i < PDetails.length; i++) {
+            patient memory P = PDetails[i];
+            if (
+                keccak256(abi.encodePacked((P.PID))) ==
+                keccak256(abi.encodePacked(pid))
+            ) {
+                return (P.SSN);
+            }
+        }
+        return "Error";
+    }
     // mapping
 
     function AddRecord(
 
         string memory hashval,
-        string memory pid
+        string memory pid,
+        string memory SSN
     ) public {
         Records.push(phealthrec(hashval,pid));
         uint256 i;
@@ -177,7 +195,8 @@ contract IPFSHealthRecordV2 {
         if (flag != 1) {							//if flag not set(not present)
             uint256[] memory arr = new uint256[](1);
             arr[0] = Records.length;
-            HashList.push(hashtable(pid, arr));				//create new entry in hashtable
+
+            HashList.push(hashtable(pid,SSN, arr));				//create new entry in hashtable
         }
 
     }
@@ -214,6 +233,26 @@ contract IPFSHealthRecordV2 {
         return FilteredData;
     }
 
+    function SearchRecordSSN(string memory SSN)
+        public
+        returns (phealthrec[] memory)
+    {
+        uint256 i;
+        uint256 j;
+        FilteredData = Empty;						//clear  FilteredData
+ 
+        for (i = 0; i < HashList.length; i++) {				//iterate through Hashtable
+            if (
+                keccak256(abi.encodePacked((HashList[i].SSN))) ==
+                keccak256(abi.encodePacked(SSN))				//if pid matches
+            ) {
+                for (j = 0; j < HashList[i].indexes.length; j++) {		//iterate through indexes
+                    FilteredData.push(Records[HashList[i].indexes[j] - 1]);	
+                }					//push record present in the index to FilteredData
+            }
+        }
+        return FilteredData;
+    }
 
     //encryption+sharing
 

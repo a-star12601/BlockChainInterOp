@@ -1,16 +1,17 @@
-from brownie import accounts, config, IPFSHealthRecordV2, network
+from brownie import accounts, config, IPFSHealthRecordV2,Intermediate, network
 
-#0x3194cBDC3dbcd3E11a07892e7bA5c3394048Cc87
+#int 0x0742Bc10181401Db501822696e948AA676CfEFbD
+#chain1 0x97299c4f69AFcb343c30E7D7417cead45197e7C4 sep 
+#chain2 0xA5468dC5C33Ebd5E1f0aD8eC862ACe74555B3B98 sep
+#chain3 0x1DED0Ed4eEf28085dfB143244f9d189d47925BeA  goe
 
-#0xd3E04fb6002065440eae96c1D02938e5BCB0fD76
-
-#V2:0xe7c958822a9f58e9C35b2B0a5cB1027FF14C921b
-
-#V2new:0x854D67F4375Fc9eD089366Fa70cbd6cA0D465843
 def test1():
     account = get_account()
-    test = IPFSHealthRecordV2.deploy({"from": account})
+    test = Intermediate.deploy({"from": account})
 
+def test2():
+    account = get_account()
+    test = IPFSHealthRecordV2.deploy({"from": account})
 
 def get_account():
 
@@ -22,4 +23,4 @@ def get_account():
 
 
 def main():
-    test1()
+    test2()

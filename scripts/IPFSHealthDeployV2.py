@@ -1,6 +1,6 @@
 from sys import displayhook
 import PySimpleGUI as sg
-from brownie import accounts, config, IPFSHealthRecordV2, network
+from brownie import accounts, config, IPFSHealthRecordV2,Intermediate, network
 
 import json
 import webbrowser
@@ -10,11 +10,17 @@ import Crypto
 from Crypto.PublicKey import RSA
 import binascii
 import Crypto.Random
+import brownie
+from pytest import hookspec
 
 
 new = 2
-# chain :  0x044926296CE4841faE2601082eD7B56EC8C2c874
-chain = IPFSHealthRecordV2.at("0x854D67F4375Fc9eD089366Fa70cbd6cA0D465843")
+#chain1 0x97299c4f69AFcb343c30E7D7417cead45197e7C4 sep 
+#chain2 0xA5468dC5C33Ebd5E1f0aD8eC862ACe74555B3B98 sep
+#chain3 0x1DED0Ed4eEf28085dfB143244f9d189d47925BeA  goe
+chain1,chain2,chain3="0x97299c4f69AFcb343c30E7D7417cead45197e7C4","0xA5468dC5C33Ebd5E1f0aD8eC862ACe74555B3B98","0x1DED0Ed4eEf28085dfB143244f9d189d47925BeA"
+curNetwork=network.show_active()
+chain = IPFSHealthRecordV2.at(chain3)
 
 import ipfshttpclient
 client = ipfshttpclient.connect('/ip4/127.0.0.1/tcp/5001')  # Connects to: /dns/localhost/tcp/5001/http
@@ -119,7 +125,7 @@ def open_register(flag):
         [sg.Text("Name:"), sg.InputText()],
         [sg.Text("ID:"), sg.InputText()],
         [sg.Text(FieldSet[flag]), sg.InputText()],
-        [sg.Text("DOBSTRING:"), sg.InputText()],
+        [sg.Text("SSN:"), sg.InputText()],
         [sg.Button("Register")],
     ]
     window = sg.Window("Register", layout, modal=True)
@@ -166,7 +172,7 @@ def open_login(uname, pword, flag):
         if flag == 1:
             layout = [
                 [sg.Text("Enter your choice:")],
-                [sg.Button("Add"), sg.Button("Search")],
+                [sg.Button("Add"), sg.Button("Search"),sg.Button("OtherHosp")],
             ]
             window = sg.Window("Doctor View", layout, modal=True)
             choice = None
@@ -178,6 +184,8 @@ def open_login(uname, pword, flag):
                     add(uname)
                 if event == "Search":
                     search()
+                if event == "OtherHosp":
+                    external()
             window.close()
         if flag == 2:
             layout = [
@@ -265,7 +273,8 @@ def add(uname):
     print(JSONContent)
     res = client.add_json(JSONContent)
     print(res)
-    chain.AddRecord(res,pid,{"from": account})
+    ssn=chain.getSSN(pid)
+    chain.AddRecord(res,pid,ssn,{"from": account})
 
 def search():
     pid = sg.popup_get_text("Enter search pid")
@@ -282,6 +291,38 @@ def search():
         sg.popup("Not Found")
     else:
         showTable(res, 10)
+
+def external():
+    global chain
+    pid = sg.popup_get_text("Enter search pid")
+    SSN = chain.getSSN(pid)
+    hosp = sg.popup_get_text("Enter Hospital")
+    network.disconnect()
+    network.connect('sepolia')
+    print(network.show_active())
+    intermediate= Intermediate.at("0x0742Bc10181401Db501822696e948AA676CfEFbD")
+    l = intermediate.RetHosp(hosp)
+    nw,link = l[0], l[1]
+    network.disconnect()
+    network.connect(nw)
+    print(network.show_active())
+    temp=IPFSHealthRecordV2.at("0x"+link)
+    object2=temp.SearchRecordSSN(SSN, {"from": account})
+    object = temp.RetFilter()
+    object = list(temp.RetFilter())
+    res=[]
+    for i in object:
+        d=client.get_json(i[0])
+        res.append([d['DID'],d['PID'],d['Object'],d['Date'],d['Dept'],d['Prescription'],d['File']])
+    if res == []:
+        sg.popup("Not Found")
+    else:
+        showTable(res, 10)
+    network.disconnect()
+    network.connect(curNetwork)
+    print(network.show_active())
+    chain = IPFSHealthRecordV2.at(chain3)
+    
 
 
 def deploy_health():
