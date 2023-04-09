@@ -13,14 +13,17 @@ import Crypto.Random
 import brownie
 from pytest import hookspec
 
+#int 0x3835C421B2F1E5a5732ecE5B3f9a91C21BED5581
+#chain1 0x04Ac8f21145Cd347b5C06b81c616a5727C0d428d sep 
+#chain2 0xE746eD7d1c94BD10410e0D1c771102aeA51Ed40E sep
+#chain3 0x925f32D6DC854Cc85b0E20671B1eb81Aa43be5Bd  goe
+
+sg.theme('default1')
 
 new = 2
-#chain1 0x97299c4f69AFcb343c30E7D7417cead45197e7C4 sep 
-#chain2 0xA5468dC5C33Ebd5E1f0aD8eC862ACe74555B3B98 sep
-#chain3 0x1DED0Ed4eEf28085dfB143244f9d189d47925BeA  goe
-chain1,chain2,chain3="0x97299c4f69AFcb343c30E7D7417cead45197e7C4","0xA5468dC5C33Ebd5E1f0aD8eC862ACe74555B3B98","0x1DED0Ed4eEf28085dfB143244f9d189d47925BeA"
+chain1,chain2,chain3="0x04Ac8f21145Cd347b5C06b81c616a5727C0d428d","0xE746eD7d1c94BD10410e0D1c771102aeA51Ed40E","0x925f32D6DC854Cc85b0E20671B1eb81Aa43be5Bd"
 curNetwork=network.show_active()
-chain = IPFSHealthRecordV2.at(chain3)
+chain = IPFSHealthRecordV2.at(chain1)
 
 import ipfshttpclient
 client = ipfshttpclient.connect('/ip4/127.0.0.1/tcp/5001')  # Connects to: /dns/localhost/tcp/5001/http
@@ -45,6 +48,7 @@ def showTable(rows, height):
                 enable_events=True
             )
         ]
+        
     ]
 
     window = sg.Window("", table_layout, modal=True, size=(500, 350))
@@ -118,20 +122,19 @@ def selfdata(uname):
 def open_register(flag):
     UserType = {1: "Doctor", 2: "Patient"}
     FieldSet = {1: "Department", 2: "Address"}
-    layout = [
-        [sg.Text("Enter Your Details:")],
-        [sg.Text("Username:"), sg.InputText()],
-        [sg.Text("Password:"), sg.InputText()],
-        [sg.Text("Name:"), sg.InputText()],
-        [sg.Text("ID:"), sg.InputText()],
-        [sg.Text(FieldSet[flag]), sg.InputText()],
-        [sg.Text("SSN:"), sg.InputText()],
-        [sg.Button("Register")],
-    ]
+    layout=[[sg.Text('Enter Your Details:')],
+          [sg.Text('Username:', size=(10, 1)), sg.InputText(key='-UNAME-')],
+          [sg.Text('Password', size=(10, 1)), sg.InputText(key='-PASS-')],
+          [sg.Text('Name:', size=(10, 1)), sg.InputText(key='-NAME-')],
+          [sg.Text('ID:', size=(10, 1)), sg.InputText(key='-ID-')],
+          [sg.Text(FieldSet[flag], size=(10, 1)), sg.InputText(key='-FLAG-')],
+          [sg.Text('SSN:', size=(10, 1)), sg.InputText(key='-SSN-')],
+          [sg.Button('Register'), sg.Button('Cancel')]]
+    
     window = sg.Window("Register", layout, modal=True)
     choice = None
     while True:
-        event, values = window.read()
+        event, values = window.read(close=True)
         if event == "Exit" or event == sg.WIN_CLOSED:
             break
         if event == "Register":
@@ -262,19 +265,36 @@ def open_login(uname, pword, flag):
 def add(uname):
     l = chain.getDid(uname)
     did, dept = l[0], l[1]
-    obj = sg.popup_get_text("Enter obj:")
-    pid = sg.popup_get_text("Enter pid:")
-    pres = sg.popup_get_text("Enter pres:")
-    date = int(sg.popup_get_text("Enter date:"))
-    filename = sg.popup_get_file('Select a file containing Python code:')
-    fhash=client.add(filename)
-    print(fhash['Hash'])
-    JSONContent={'DID':did,'Dept':dept,'Object':obj,'PID':pid,'Prescription':pres,'Date':date,'File':fhash['Hash']}
-    print(JSONContent)
-    res = client.add_json(JSONContent)
-    print(res)
-    ssn=chain.getSSN(pid)
-    chain.AddRecord(res,pid,ssn,{"from": account})
+    layout=[[sg.Text('Enter Record Details:')],
+          [sg.Text('Object:', size=(10, 1)), sg.InputText(key='-OBJ-')],
+          [sg.Text('PID', size=(10, 1)), sg.InputText(key='-PID-')],
+          [sg.Text('Prescription:', size=(10, 1)), sg.InputText(key='-PRES-')],
+          [sg.Text('Date:', size=(10, 1)), sg.InputText(key='-DATE-')],
+          [sg.Text('Filename', size=(10, 1)), sg.FileBrowse(key='-FILE-')],
+          [sg.Button('Add'), sg.Button('Cancel')]]
+    window = sg.Window("Add Record", layout,modal=True)
+    while True:
+        event, values = window.read(close=True)
+        if event == "Cancel" or event == sg.WIN_CLOSED:
+            break
+        if event == "Add":
+            obj = values['-OBJ-']
+            pid = values['-PID-']
+            pres = values['-PRES-']
+            date = int(values['-DATE-'])
+            filename = values['-FILE-']
+            fhash=client.add(filename)
+            print(fhash['Hash'])
+            JSONContent= {'DID':did,'Dept':dept,'Object':obj,'PID':pid,'Prescription':pres,'Date':date,'File':fhash['Hash']}
+            print(JSONContent)
+            res = client.add_json(JSONContent)
+            print(res)
+            ssn=chain.getSSN(pid)
+            chain.AddRecord(res,pid,ssn,{"from": account})  
+            break      
+    window.close()
+
+
 
 def search():
     pid = sg.popup_get_text("Enter search pid")
@@ -296,32 +316,50 @@ def external():
     global chain
     pid = sg.popup_get_text("Enter search pid")
     SSN = chain.getSSN(pid)
-    hosp = sg.popup_get_text("Enter Hospital")
+    layout=[
+          [sg.Button('Server 1'), sg.Button('Server 2')]]
+    window = sg.Window("Select Server", layout,modal=True)
+    while True:
+        event, values = window.read(close=True)
+        if event == "Cancel" or event == sg.WIN_CLOSED:
+            break
+        if event == "Server 1":
+            network.disconnect()
+            network.connect('sepolia')
+            print(network.show_active())
+            intermediate= Intermediate.at("0x3835C421B2F1E5a5732ecE5B3f9a91C21BED5581")
+            break      
+        if event == "Server 2":
+            network.disconnect()
+            network.connect('sepolia')
+            print(network.show_active())
+            intermediate= Intermediate.at("0x4C9c8d92df21E9a86Ff34Ac868C89e802807D210")
+            break      
+    window.close()  
+    HospList=list(intermediate.GetH())
+    print(HospList)
+    data=[]
+    for i in HospList[:-1]:
+        nw,link = i[1], i[2]
+        network.disconnect()
+        network.connect(nw)
+        print(network.show_active())
+        temp=IPFSHealthRecordV2.at("0x"+link)
+        object2=temp.SearchRecordSSN(SSN, {"from": account})
+        object = list(temp.RetFilter())
+        data+=object
     network.disconnect()
-    network.connect('sepolia')
+    network.connect(curNetwork)
     print(network.show_active())
-    intermediate= Intermediate.at("0x0742Bc10181401Db501822696e948AA676CfEFbD")
-    l = intermediate.RetHosp(hosp)
-    nw,link = l[0], l[1]
-    network.disconnect()
-    network.connect(nw)
-    print(network.show_active())
-    temp=IPFSHealthRecordV2.at("0x"+link)
-    object2=temp.SearchRecordSSN(SSN, {"from": account})
-    object = temp.RetFilter()
-    object = list(temp.RetFilter())
     res=[]
-    for i in object:
+    for i in data:
         d=client.get_json(i[0])
         res.append([d['DID'],d['PID'],d['Object'],d['Date'],d['Dept'],d['Prescription'],d['File']])
     if res == []:
         sg.popup("Not Found")
     else:
         showTable(res, 10)
-    network.disconnect()
-    network.connect(curNetwork)
-    print(network.show_active())
-    chain = IPFSHealthRecordV2.at(chain3)
+    chain = IPFSHealthRecordV2.at(chain1)
     
 
 

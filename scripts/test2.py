@@ -1,9 +1,9 @@
 from brownie import accounts, config, IPFSHealthRecordV2,Intermediate, network
 
-#int 0x0742Bc10181401Db501822696e948AA676CfEFbD
-#chain1 0x97299c4f69AFcb343c30E7D7417cead45197e7C4 sep 
-#chain2 0xA5468dC5C33Ebd5E1f0aD8eC862ACe74555B3B98 sep
-#chain3 0x1DED0Ed4eEf28085dfB143244f9d189d47925BeA  goe
+#int 0x3835C421B2F1E5a5732ecE5B3f9a91C21BED5581
+#chain1 0x04Ac8f21145Cd347b5C06b81c616a5727C0d428d sep 
+#chain2 0xE746eD7d1c94BD10410e0D1c771102aeA51Ed40E sep
+#chain3 0x925f32D6DC854Cc85b0E20671B1eb81Aa43be5Bd  goe
 
 def test1():
     account = get_account()
@@ -23,4 +23,4 @@ def get_account():
 
 
 def main():
-    test2()
+    test1()
